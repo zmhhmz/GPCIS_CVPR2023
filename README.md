@@ -1,5 +1,7 @@
-# Interactive Segmentation as Gaussian Process Classification (CVPR2023)
+# Interactive Segmentation as Gaussian Process Classification (CVPR2023 Highlight)
 Minghao Zhou, [Hong Wang](https://hongwang01.github.io/), Qian Zhao, Yuexiang Li, Yawen Huang, [Deyu Meng](http://gr.xjtu.edu.cn/web/dymeng), [Yefeng Zheng](https://sites.google.com/site/yefengzheng/)
+
+## Codes coming soon.
 
 [[Arxiv]](https://arxiv.org/abs/2302.14578)
 
