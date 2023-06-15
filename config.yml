@@ -1,0 +1,17 @@
+INTERACTIVE_MODELS_PATH: " "
+EXPS_PATH: "./experiments"
+
+# Datasets
+GRABCUT_PATH: "path_to/GrabCut"
+BERKELEY_PATH: "path_to/Berkeley"
+DAVIS_PATH:  "path_to/DAVIS"
+COCO_MVAL_PATH: "path_to/COCO_MVal"
+PASCALVOC_PATH: "path_to/VOC2012"
+DAVIS585_PATH: "path_to/Selected_480P"
+SBD_PATH:  "path_to/SBD/dataset"
+
+# Pretrained weights
+IMAGENET_PRETRAINED_MODELS:
+  RESNET50_v1s: "path_to/gluon_resnet50_v1s-1762acc0.pth"
+
+
