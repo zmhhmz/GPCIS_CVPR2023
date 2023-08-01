@@ -8,7 +8,6 @@ from einops import rearrange, repeat
 from opt_einsum import contract
 import math
 
-
 class ISGPModel(nn.Module):
     def __init__(self, use_rgb_conv=False, feature_stride = 4, with_aux_output=False,
                  norm_radius=260, use_disks=False, cpu_dist_maps=False,
@@ -103,8 +102,11 @@ class ISGPModel(nn.Module):
             point_nums.append(ps.size(0))
             zf = feature[i,:,ps[:,0].long(),ps[:,1].long()].T #n,d
             zf_list.append(zf)
-            Kmm = torch.exp(-torch.sum(torch.exp(self.logsigma2)*(zf[:,:-3].unsqueeze(1)-zf[:,:-3])**2,2)/2) +\
+            norm = torch.norm(torch.exp(self.logsigma2/2)*zf[:,:-3], dim=1,p=2)**2/2 # n,
+            Kmm = torch.exp(contract('nd,md,d->nm',zf[:,:-3],zf[:,:-3],torch.exp(self.logsigma2))-\
+                  norm.unsqueeze(0).repeat(ps.size(0),1)-norm.unsqueeze(1).repeat(1,ps.size(0)))+\
                   weight*torch.exp(-torch.sum((zf[:,-3:].unsqueeze(1)-zf[:,-3:])**2,2)/2)
+            
             inv_Kmm_list.append(torch.inverse(Kmm+self.eps2*torch.eye(Kmm.size(0),device=Kmm.device)))
 
         inv_Kmm = torch.block_diag(*inv_Kmm_list) #n,n
@@ -131,9 +133,14 @@ class ISGPModel(nn.Module):
             if point_nums[i]==0:
                 offset+=1
                 continue
-            delta2 = (repeat(feature[i,...],'d h w->n d h w',n=point_nums[i])-repeat(zf_list[i-offset],'n d -> n d h w',h=h,w=w))**2
-            Knm = torch.exp(-torch.sum(torch.exp(self.logsigma2).view(1,self.feature_dim,1,1)*delta2[:,:-3,...], dim=1)/2) + \
-                  weight*torch.exp(-torch.sum(delta2[:,-3:,...], dim=1)/2) 
+            norm1 = torch.norm(torch.exp(self.logsigma2/2).view(self.feature_dim,1,1)*feature[i,:-3], dim=0,p=2)**2/2 #h w
+            norm2 = torch.norm(torch.exp(self.logsigma2/2)*zf_list[i-offset][:,:-3], dim=1,p=2)**2/2 # n,
+            norm_rgb1 = torch.norm(feature[i,-3:], dim=0,p=2)**2/2 #h w
+            norm_rgb2 = torch.norm(zf_list[i-offset][:,-3:], dim=1,p=2)**2/2 # n,
+            Knm = torch.exp(contract('dhw,nd,d->nhw',feature[i,:-3],zf_list[i-offset][:,:-3],torch.exp(self.logsigma2)) -\
+            repeat(norm1, 'h w -> n h w',n=point_nums[i]) - repeat(norm2, 'n -> n h w',h=h, w=w)) + \
+            weight*torch.exp(contract('dhw,nd->nhw',feature[i,-3:],zf_list[i-offset][:,-3:])-\
+                repeat(norm_rgb1, 'h w -> n h w',n=point_nums[i]) - repeat(norm_rgb2, 'n -> n h w',h=h, w=w))
             result[i,...] += contract('nhw,ns->shw',Knm, v[num_prev:num_prev+point_nums[i]])
             num_prev += point_nums[i]
         return result, 0.001*u_loss
